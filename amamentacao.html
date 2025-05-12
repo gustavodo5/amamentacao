@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro de Amamentação</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 30px; background: #f9f9f9; }
+    button { margin: 10px; padding: 15px 25px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; background: #4CAF50; color: white; }
+    button:hover { background: #45a049; }
+    input, select { margin: 5px; padding: 8px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+    #status { margin-top: 20px; font-weight: bold; }
+    #ultimos { margin-top: 30px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+  <h1>Registro de Amamentação</h1>
+
+  <p><strong>Último Registro:</strong> <span id="lastEntry">Nenhum</span></p>
+
+  <div>
+    <button onclick="registrar('Esquerdo')">Seio Esquerdo</button>
+    <button onclick="registrar('Direito')">Seio Direito</button>
+    <button onclick="registrar('Ambos')">Ambos os Seios</button>
+  </div>
+
+  <h2>Adicionar Manualmente</h2>
+  <div>
+    <select id="seioManual">
+      <option value="Esquerdo">Seio Esquerdo</option>
+      <option value="Direito">Seio Direito</option>
+      <option value="Ambos">Ambos os Seios</option>
+    </select>
+    <input type="datetime-local" id="dataManual" />
+    <button onclick="registrarManual()">Salvar</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="ultimos">
+    <h2>Últimas 3 Amamentações</h2>
+    <ul id="listaAmamentacoes">
+      <li>Carregando...</li>
+    </ul>
+  </div>
+
+  <script>
+    const scriptURL = "https://script.google.com/macros/s/AKfycbw0vB9Za7q6VFWrDOgP_-cY_yANNG2Kbx5OulFEXlHR2sJaCT52cVHWNnJnqbP0UYcP/exec";
+
+    function mostrarStatus(msg, sucesso = true) {
+      const status = document.getElementById("status");
+      status.textContent = msg;
+      status.style.color = sucesso ? "green" : "red";
+    }
+
+    function registrar(seio) {
+      const dataAtual = new Date().toISOString();
+      enviarParaSheet(seio, dataAtual);
+      document.getElementById("lastEntry").textContent = `${new Date().toLocaleString()} - ${seio}`;
+    }
+
+    function registrarManual() {
+      const seio = document.getElementById("seioManual").value;
+      const data = document.getElementById("dataManual").value;
+      if (!data) {
+        mostrarStatus("Por favor, selecione a data e hora.", false);
+        return;
+      }
+      enviarParaSheet(seio, new Date(data).toISOString());
+      document.getElementById("lastEntry").textContent = `${new Date(data).toLocaleString()} - ${seio}`;
+    }
+
+    function enviarParaSheet(seio, dataISO) {
+      fetch(scriptURL, {
+        method: "POST",
+        body: JSON.stringify({ seio: seio, data: dataISO }),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(response => response.text())
+      .then(resp => {
+        mostrarStatus("✅ Registro adicionado com sucesso!");
+        carregarUltimos();
+      })
+      .catch(error => mostrarStatus("❌ Erro ao enviar o registro: " + error, false));
+    }
+
+    function carregarUltimos() {
+      fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+          const lista = document.getElementById("listaAmamentacoes");
+          lista.innerHTML = "";
+          data.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = `${item.data} - ${item.seio}`;
+            lista.appendChild(li);
+          });
+        })
+        .catch(err => {
+          document.getElementById("listaAmamentacoes").innerHTML = "<li>Erro ao carregar dados.</li>";
+        });
+    }
+
+    carregarUltimos(); // carrega ao abrir
+  </script>
+</body>
+</html>
